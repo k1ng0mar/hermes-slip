@@ -1,6 +1,6 @@
 name: slip
 version: 1.0.0
-description: Appends a short list of writes and sends to the final reply on messengers, where tool calls are otherwise invisible.
+description: On Telegram, appends this turn's writes and sends onto the final reply. Stays off on Desktop and Conduit, which already show tools.
 author: Umar Faruk Saidu
 license: MIT
 manifest_version: 2

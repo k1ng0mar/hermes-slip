@@ -1,37 +1,68 @@
 # Slip
 
-On Telegram and Conduit, Hermes hides tool calls. The agent can write a
-file and you only see "done". Slip appends a short mutation list the
-hooks actually observed.
+Telegram hides tool calls. The agent can write a file and you only see
+"done". Slip appends the writes and sends from that turn onto the final
+reply, from the hooks, not from what the model claimed.
 
-Desktop and the CLI already show tools, so slip stays out of those
-surfaces.
+Conduit and Desktop already show the tool stream. So does the CLI.
+Slip stays off there.
+
+## What you get
+
+A Telegram turn that wrote `/tmp/slip-demo.txt` ends like this:
+
+```
+done
+
+slip
+wrote /tmp/slip-demo.txt (12 bytes)
+```
+
+A `read_file` of that path does not add a line. A failed or blocked
+write does not add a line. `send_message` lists the target, never the
+body.
+
+## What it records
+
+| Call | On the slip |
+| --- | --- |
+| `write_file` (ok) | `wrote <path> (N bytes)` |
+| `patch` (ok) | `patched <path>` |
+| `send_message` send | `sent to <target>` |
+| `memory` add/replace/remove | `wrote memory` |
+| `skill_manage` | `changed skill <name>` |
+| `cronjob_manage` | `changed cron` |
+
+Everything else is ignored, including reads, `send_message` list/react,
+and any call with status `error` or `blocked`. Cap is 12 lines, then
+`+N more`.
 
 ## How it works
 
-- `post_tool_call` records successful `write_file` and `patch` calls,
-  and `send_message` sends (not list/react). Reads never appear. Failed
-  or blocked calls never appear. Message bodies are never copied onto
-  the slip.
-- `transform_llm_output` appends the list to the final reply, once per
-  turn, then clears it. It does not use `hold_stream`, so a bug here
-  cannot withhold the reply. `pre_llm_call` also clears at the start of
-  the next turn.
+`post_tool_call` appends a line to an in-memory list keyed by
+`session_id`. `transform_llm_output` dumps that list under the reply
+once per turn, then clears it. `pre_llm_call` clears it at the start
+of the next turn.
 
-The counter is keyed by `session_id`. No network, no disk, no credentials.
+It does not set `hold_stream`. A bug here cannot withhold the reply.
+Hermes takes the first non-empty `transform_llm_output` string, so if
+another plugin already rewrote the reply, slip is skipped for that
+turn.
 
-Hermes runs `transform_llm_output` as first non-empty string wins. If
-another plugin already rewrote the reply, slip is skipped for that turn.
+No network, no disk, no credentials.
+
+Quiet platforms (`cli`, `tui`, `desktop`, `acp`, `conduit`): the list
+is left unused and no footer is appended.
 
 ## Install
 
-Copy this directory to `~/.hermes/plugins/slip/`, then:
-
 ```
-hermes plugins enable slip
+hermes plugins install k1ng0mar/hermes-slip --enable
 ```
 
-Restart the gateway if one is already running.
+Or copy this directory to `~/.hermes/plugins/slip/` and run
+`hermes plugins enable slip`. Restart the gateway if one is already
+running and did not hot-reload hooks.
 
 ## Tests
 
@@ -39,16 +70,17 @@ Restart the gateway if one is already running.
 python3 -m unittest discover -s test -v
 ```
 
-15 tests, stdlib only.
+16 tests, stdlib only.
 
 ## Demo
 
-On Telegram or Conduit: ask the agent to write `/tmp/slip-demo.txt`.
-The reply should end with:
+From Telegram, not Conduit and not Desktop: ask the agent to write
+`/tmp/slip-demo.txt`. The reply should end with the `slip` block
+above. Then `read_file` that path. No new slip line.
 
-```
-slip
-wrote /tmp/slip-demo.txt (N bytes)
-```
+## Limits
 
-A `read_file` of that path must not add a line.
+Terminal commands are not parsed, so a `cat > file` via `terminal`
+will not show up. Bytes come from the `content` argument on
+`write_file`, not from the disk. Concurrent sessions in one process
+are isolated by `session_id`; a missing id shares one bucket.

@@ -120,6 +120,12 @@ class TestSlip(unittest.TestCase):
         self.assertIsNone(self.s.on_transform_llm_output(
             response_text="done", session_id="s1", platform="cli"))
 
+    def test_conduit_gets_no_slip(self):
+        self.s.on_post_tool_call(**_ok(
+            "write_file", {"path": "/tmp/x.txt", "content": "hi"}))
+        self.assertIsNone(self.s.on_transform_llm_output(
+            response_text="done", session_id="s1", platform="conduit"))
+
     def test_new_turn_clears(self):
         self.s.on_post_tool_call(**_ok(
             "write_file", {"path": "/tmp/x.txt", "content": "hi"}))

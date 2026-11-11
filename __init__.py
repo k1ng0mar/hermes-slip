@@ -1,10 +1,10 @@
-"""Slip: a mutation list on the final reply for surfaces that hide tool calls.
+"""Slip: a mutation list on the final reply for messengers that hide tool calls.
 
-Desktop, the TUI and the CLI already show every tool. Telegram, Conduit and
-the other messengers do not, so a write can land and the user only sees
-"done". Slip watches post_tool_call, keeps a per-session list of writes and
-sends (not reads), and appends it in transform_llm_output. pre_llm_call
-clears the list for the next turn.
+Desktop, Conduit, the TUI and the CLI already show every tool. Telegram,
+WhatsApp, Signal and SMS do not, so a write can land and the user only
+sees "done". Slip watches post_tool_call, keeps a per-session list of
+writes and sends (not reads), and appends it in transform_llm_output.
+pre_llm_call clears the list for the next turn.
 
 No credentials, no network, no disk. The list lives in memory. Failed or
 blocked calls are ignored. send_message bodies are never copied onto the
@@ -17,7 +17,7 @@ import threading
 
 __all__ = ["Slip", "register", "QUIET_PLATFORMS"]
 
-QUIET_PLATFORMS = frozenset({"cli", "tui", "desktop", "acp"})
+QUIET_PLATFORMS = frozenset({"cli", "tui", "desktop", "acp", "conduit"})
 MAX_LINES = 12
 
 
