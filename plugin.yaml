@@ -1,0 +1,12 @@
+name: slip
+version: 1.0.0
+description: Appends a short list of writes and sends to the final reply on messengers, where tool calls are otherwise invisible.
+author: Umar Faruk Saidu
+license: MIT
+manifest_version: 2
+api_version: 1
+tags: [guardrail, messaging, transparency]
+provides_hooks:
+  - post_tool_call
+  - pre_llm_call
+  - transform_llm_output
